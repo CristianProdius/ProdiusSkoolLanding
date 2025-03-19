@@ -1,22 +1,25 @@
-import { BsBarChartFill, BsFillStarFill } from "react-icons/bs";
-import { PiGlobeFill } from "react-icons/pi";
-
+// /data/stats.ts
+import { FaGraduationCap, FaChalkboardTeacher } from "react-icons/fa";
+import { BsCheckCircleFill } from "react-icons/bs";
 import { IStats } from "@/types";
 
 export const stats: IStats[] = [
-    {
-        title: "20M+",
-        icon: <BsBarChartFill size={34} className="text-blue-500" />,
-        description: "Transactions processed securely every day, providing real-time insights."
-    },
-    {
-        title: "5.0",
-        icon: <BsFillStarFill size={34} className="text-yellow-500" />,
-        description: "Star rating, consistently maintained across app stores."
-    },
-    {
-        title: "200+ ",
-        icon: <PiGlobeFill size={34} className="text-green-600" />,
-        description: "Financial Institutions, seamlessly integrated, so you can manage all accounts."
-    }
+  {
+    title: "3.000+",
+    icon: <FaGraduationCap size={34} className="text-primary" />,
+    description:
+      "Elevi au urmat cursurile noastre și au promovat cu note excelente.",
+  },
+  {
+    title: "95%",
+    icon: <BsCheckCircleFill size={34} className="text-green-600" />,
+    description:
+      "Rata de promovare la examenul național pentru studenții care finalizează programul.",
+  },
+  {
+    title: "15+",
+    icon: <FaChalkboardTeacher size={34} className="text-secondary" />,
+    description:
+      "Profesori cu experiență, gata să te ghideze pas cu pas spre succes.",
+  },
 ];

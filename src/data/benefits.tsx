@@ -1,72 +1,94 @@
-import { FiBarChart2, FiBriefcase, FiDollarSign, FiLock, FiPieChart, FiShield, FiTarget, FiTrendingUp, FiUser } from "react-icons/fi";
+import {
+  FiBookOpen,
+  FiCheckSquare,
+  FiBarChart2,
+  FiPlayCircle,
+  FiEdit,
+  FiUsers,
+  FiLifeBuoy,
+  FiMessageSquare,
+  FiUserCheck,
+} from "react-icons/fi";
 
-import { IBenefit } from "@/types"
+import { IBenefit } from "@/types";
 
 export const benefits: IBenefit[] = [
-    {
-        title: "Smart Budgeting",
-        description: "Take the guesswork out of managing your money. Our AI-powered budgeting tool adapts to your lifestyle and helps you stay on track.",
-        bullets: [
-            {
-                title: "Intelligent Categorization",
-                description: "Automatically sorts your transactions for crystal-clear insights.",
-                icon: <FiBarChart2 size={26} />
-            },
-            {
-                title: "Customizable Goals",
-                description: "Set and track financial objectives that matter to you.",
-                icon: <FiTarget size={26} />
-            },
-            {
-                title: "Predictive Analysis",
-                description: "Get ahead of your finances with spending forecasts and alerts.",
-                icon: <FiTrendingUp size={26} />
-            }
-        ],
-        imageSrc: "/images/mockup-1.webp"
-    },
-    {
-        title: "Seamless Investing",
-        description: "Start building wealth today, no financial degree required. Finwise makes investing accessible and straightforward.",
-        bullets: [
-            {
-                title: "Micro-Investing",
-                description: "Begin with as little as $1 and watch your money grow.",
-                icon: <FiDollarSign size={26} />
-            },
-            {
-                title: "Expert Portfolios",
-                description: "Choose from investment strategies tailored to your risk tolerance.",
-                icon: <FiBriefcase size={26} />
-            },
-            {
-                title: "Real-Time Performance",
-                description: "Track your investments with easy-to-understand metrics and visuals.",
-                icon: <FiPieChart size={26} />
-            }
-        ],
-        imageSrc: "/images/mockup-2.webp"
-    },
-    {
-        title: "Bank-Grade Security",
-        description: "Your financial data deserves the best protection. Rest easy knowing Finwise employs cutting-edge security measures.",
-        bullets: [
-            {
-                title: "Military-Grade Encryption",
-                description: "Your information is safeguarded with the highest level of encryption.",
-                icon: <FiLock size={26} />
-            },
-            {
-                title: "Biometric Authentication",
-                description: "Access your account securely with fingerprint or facial recognition.",
-                icon: <FiUser size={26} />
-            },
-            {
-                title: "Real-Time Fraud Detection",
-                description: "Our system constantly monitors for suspicious activity to keep your money safe.",
-                icon: <FiShield size={26} />
-            }
-        ],
-        imageSrc: "/images/mockup-1.webp"
-    },
-]
+  {
+    title: "Tehnici de învățare rapide și eficiente",
+    description:
+      "Maximizează-ți potențialul cu metode verificate științific. Ne concentrăm pe lacunele tale, astfel încât să devii mai bun(ă) într-un timp record!",
+    bullets: [
+      {
+        title: "Plan de studiu personalizat",
+        description:
+          "Creăm un program de învățare care se adaptează nevoilor și obiectivelor tale.",
+        icon: <FiBookOpen size={26} />,
+      },
+      {
+        title: "Testare la cerere",
+        description:
+          "Evaluează-ți cunoștințele oricând pentru a-ți urmări progresul în timp real.",
+        icon: <FiCheckSquare size={26} />,
+      },
+      {
+        title: "Feedback și rapoarte detaliate",
+        description:
+          "Obține analize clare și obiective, astfel încât să știi exact unde să te concentrezi.",
+        icon: <FiBarChart2 size={26} />,
+      },
+    ],
+    imageSrc: "/images/benefit-1.svg",
+  },
+  {
+    title: "Platformă interactivă și resurse multimedia",
+    description:
+      "Acces instant la lecții video, fișe de lucru, quiz-uri și simulări de examen, toate într-un singur loc. Programează-ți lecția gratuită și începe să înveți eficient!",
+    bullets: [
+      {
+        title: "Lecții video clare",
+        description:
+          "Explicații pas cu pas, ușor de urmărit și revizuit oricând ai nevoie.",
+        icon: <FiPlayCircle size={26} />,
+      },
+      {
+        title: "Simulări de examen",
+        description:
+          "Exersează în condiții similare cu cele reale pentru a-ți reduce emoțiile din ziua testării.",
+        icon: <FiEdit size={26} />,
+      },
+      {
+        title: "Sesiuni Q&A live",
+        description:
+          "Intră în legătură cu profesori și colegi, adresează întrebări și primește răspunsuri rapide.",
+        icon: <FiUsers size={26} />,
+      },
+    ],
+    imageSrc: "/images/benefit-2.svg",
+  },
+  {
+    title: "Suport dedicat și consiliere permanentă",
+    description:
+      "Nu ești niciodată singur(ă) în călătoria ta. Echipa noastră de mentori îți oferă îndrumare pas cu pas, de la înscriere până la examen.",
+    bullets: [
+      {
+        title: "Comunitate activă",
+        description:
+          "Alătură-te unui grup de elevi motivați și schimbă idei într-un mediu de sprijin reciproc.",
+        icon: <FiMessageSquare size={26} />,
+      },
+      {
+        title: "Asistență 24/7",
+        description:
+          "Ai întrebări târziu în noapte? Suntem aici să te ajutăm, indiferent de oră!",
+        icon: <FiLifeBuoy size={26} />,
+      },
+      {
+        title: "Recomandări personalizate",
+        description:
+          "Sfaturi punctuale și resurse adaptate la nivelul tău, pentru a te ajuta să progresezi mai rapid.",
+        icon: <FiUserCheck size={26} />,
+      },
+    ],
+    imageSrc: "/images/benefit-3.svg",
+  },
+];

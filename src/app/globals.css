@@ -1,28 +1,65 @@
+/* global.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 
+  1. Define Color Palette
+  -----------------------------------------------------------------
+  These :root variables can be referenced in both CSS and Tailwind 
+  (via custom utilities or with the `theme.extend.colors` in Tailwind config).
+*/
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --primary: #FED835;
-  --secondary: #304fff;
 
+  /* Primary = gold/bright yellow, Secondary = strong blue */
+  --primary: #fed835; /* Primary brand color */
+  --secondary: #304fff; /* Secondary brand color */
+
+  /* Accent colors for hover states, highlights, etc. */
   --primary-accent: #e5c230;
   --foreground-accent: #454545;
-  --hero-background: #F3F3F5;
+
+  /* Subtle background color for hero sections or large blocks */
+  --hero-background: #f3f3f5;
 }
 
+/*
+  2. Base & Body Styles
+  -----------------------------------------------------------------
+  We’re adding a global scroll-smooth and setting up the body 
+  with your brand’s default font, text size, and color scheme.
+*/
 html {
   @apply scroll-smooth;
 }
 
 body {
   @apply text-lg;
-  
-  color: var(--foreground);
-  background: var(--background);
   font-family: "Source Sans 3", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
+/*
+  3. Heading & Utility Classes
+  -----------------------------------------------------------------
+  Using Manrope for headings to match your brand style 
+  and providing a `.text-balance` utility if you want 
+  balanced text-wrapping in large headlines.
+*/
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.manrope {
+  font-family: "Manrope", sans-serif;
   font-optical-sizing: auto;
   font-style: normal;
 }
@@ -33,22 +70,73 @@ body {
   }
 }
 
-.manrope {
-  font-family: "Manrope", sans-serif;
-  font-optical-sizing: auto;
-  font-style: normal;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: "Manrope", sans-serif;
-  font-optical-sizing: auto;
-  font-style: normal;
-}
-
+/*
+  4. Logo Sizing
+  -----------------------------------------------------------------
+  Ensures SVG logos scale nicely. You can adjust w-fit if needed.
+*/
 #logos svg {
   @apply w-fit h-10 sm:h-12;
 }
 
+/*
+  5. Section Spacing
+  -----------------------------------------------------------------
+  Example utility that adds extra spacing at the bottom 
+  of your last benefit section.
+*/
 .benefit-section:last-of-type > div {
   @apply mb-10;
+}
+
+/*
+  6. Additional Brand Utilities (Optional)
+  -----------------------------------------------------------------
+  If you want to quickly apply brand colors using Tailwind classes,
+  you can define custom properties as CSS variables and 
+  use them directly in custom utility classes:
+*/
+
+@layer utilities {
+  .bg-primary {
+    background-color: var(--primary);
+  }
+  .bg-secondary {
+    background-color: var(--secondary);
+  }
+  .bg-hero {
+    background-color: var(--hero-background);
+  }
+
+  .text-primary {
+    color: var(--primary);
+  }
+  .text-secondary {
+    color: var(--secondary);
+  }
+
+  .hover\\:bg-primary-accent:hover {
+    background-color: var(--primary-accent);
+  }
+
+  .hover\\:text-foreground-accent:hover {
+    color: var(--foreground-accent);
+  }
+}
+
+@layer utilities {
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.8s ease-out forwards;
+  }
 }

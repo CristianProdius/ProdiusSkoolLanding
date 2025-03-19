@@ -1,6 +1,6 @@
+// /data/cta.ts
 export const ctaDetails = {
-    heading: 'Join Over 1 Million Users To Transform Your Finances',
-    subheading: 'Your journey to financial freedom starts here. Download Finwise today and take the first step towards a brighter financial future!',
-    appStoreUrl: '#',
-    googlePlayUrl: '#'
-}
+  heading: "Începe astăzi drumul spre succes la examen!",
+  subheading:
+    "Programează-ți lecția gratuită și descoperă o platformă interactivă, fișe de lucru personalizate și ghidarea profesorilor noștri cu experiență.",
+};

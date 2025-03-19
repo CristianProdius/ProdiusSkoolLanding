@@ -1,37 +1,36 @@
+// /data/footer.ts
 import { IMenuItem, ISocials } from "@/types";
 
 export const footerDetails: {
-    subheading: string;
-    quickLinks: IMenuItem[];
-    email: string;
-    telephone: string;
-    socials: ISocials;
+  subheading: string;
+  quickLinks: IMenuItem[];
+  email: string;
+  telephone: string;
+  socials: ISocials;
 } = {
-    subheading: "Empowering businesses with cutting-edge financial technology solutions.",
-    quickLinks: [
-        {
-            text: "Features",
-            url: "#features"
-        },
-        {
-            text: "Pricing",
-            url: "#pricing"
-        },
-        {
-            text: "Testimonials",
-            url: "#testimonials"
-        }
-    ],
-    email: 'address@yoursite.com',
-    telephone: '+1 (123) 456-7890',
-    socials: {
-        // github: 'https://github.com',
-        // x: 'https://twitter.com/x',
-        twitter: 'https://twitter.com/Twitter',
-        facebook: 'https://facebook.com',
-        // youtube: 'https://youtube.com',
-        linkedin: 'https://www.linkedin.com',
-        // threads: 'https://www.threads.net',
-        instagram: 'https://www.instagram.com',
-    }
-}
+  subheading:
+    "Ajutăm elevii să se pregătească pentru examenele naționale prin soluții online interactive.",
+  quickLinks: [
+    {
+      text: "Caracteristici",
+      url: "#features",
+    },
+    {
+      text: "Prețuri",
+      url: "#pricing",
+    },
+    {
+      text: "Testimoniale",
+      url: "#testimonials",
+    },
+  ],
+  email: "contact@prodiusskool",
+  telephone: "+40 123 456 789", // Example Romanian format
+  socials: {
+    // Add or remove platforms as desired
+    twitter: "https://twitter.com/Twitter",
+    facebook: "https://facebook.com",
+    linkedin: "https://www.linkedin.com",
+    instagram: "https://www.instagram.com",
+  },
+};
