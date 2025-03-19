@@ -7,9 +7,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (req.method === "POST") {
-    const { subject, teacherId, timeslot, name, email, phone } = JSON.parse(
-      req.body
-    );
+    JSON.parse(req.body);
 
     // 1) Check if teacher/timeslot is under capacity (less than 3).
     // 2) If full, return an error or suggest another teacher/time.
