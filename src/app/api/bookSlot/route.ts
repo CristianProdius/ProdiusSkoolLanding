@@ -4,6 +4,9 @@ import nodemailer from "nodemailer";
 import { google } from "googleapis";
 import { cookies } from "next/headers"; // for reading tokens in Next.js App Router
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 const prisma = new PrismaClient();
 const MAX_CAPACITY = 3;
 
