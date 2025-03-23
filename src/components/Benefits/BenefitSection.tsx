@@ -95,7 +95,7 @@ const BenefitSection: React.FC<Props> = ({ benefit, imageAtRight }: Props) => {
           {/* CTA to Book a Trial Class */}
           <motion.div variants={childVariants} className="mt-8 md:mt-6">
             <Link
-              href="/programeaza-lectia-demo"
+              href="/book"
               className="inline-block rounded-full bg-primary text-black 
                          px-6 py-3 text-sm sm:text-base font-semibold 
                          hover:bg-primary-accent transition-colors"

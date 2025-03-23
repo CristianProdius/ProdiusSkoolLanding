@@ -4,7 +4,7 @@ import { IPricing } from "@/types";
 export const tiers: IPricing[] = [
   {
     name: "Pachet Start",
-    price: 300, // RON
+    price: 3000, // RON
     features: [
       "10 lecții interactive",
       "Acces la materiale PDF și video",
@@ -15,7 +15,7 @@ export const tiers: IPricing[] = [
   {
     // The highlighted tier with 20 lectures @ 500 RON
     name: "Pachet Plus",
-    price: 500, // RON
+    price: 5000, // RON
     features: [
       "20 lecții interactive (live sau înregistrate)",
       "Acces la fișe de lucru avansate și simulări de examen",
@@ -25,7 +25,7 @@ export const tiers: IPricing[] = [
   },
   {
     name: "Pachet Premium",
-    price: 700, // RON
+    price: 7000, // RON
     features: [
       "30 lecții interactive + sesiuni Q&A individuale",
       "Toate materialele și testele practice disponibile non-stop",

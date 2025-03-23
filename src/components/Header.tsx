@@ -59,7 +59,7 @@ const Header: React.FC = () => {
             ))}
             <li>
               <Link
-                href="/programeaza-lectia-demo"
+                href="/book"
                 className="text-black bg-primary hover:bg-primary-accent 
                                            px-8 py-3 rounded-full transition-colors"
               >
@@ -114,7 +114,7 @@ const Header: React.FC = () => {
             ))}
             <li>
               <Link
-                href="/programeaza-lectia-demo"
+                href="/book"
                 className="text-black bg-primary hover:bg-primary-accent 
                                            px-5 py-2 rounded-full block w-fit"
                 onClick={toggleMenu}

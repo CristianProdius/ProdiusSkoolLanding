@@ -33,7 +33,7 @@ const CTA: React.FC = () => {
             <div className="mt-8">
               {/* Link to your booking or signup section; adjust "#trial" as needed */}
               <Link
-                href="/programeaza-lectia-demo"
+                href="/book"
                 className="inline-block bg-primary hover:bg-primary-accent text-black font-semibold
                            rounded-full py-3 px-8 transition-colors"
               >

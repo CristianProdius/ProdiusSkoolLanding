@@ -1,89 +1,85 @@
 "use client";
-
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import clsx from "clsx";
 
-/**
- * 1) S T E P   D E F I N I T I O N
- * ---------------------------------
- * We'll define each step and a component function for each step’s UI.
- */
+// =============== Step 1: Subject + Date ===============
+interface StepSubjectAndDateProps {
+  subjects: { id: number; name: string }[];
+  selectedSubjectId: number | null;
+  setSelectedSubjectId: (id: number) => void;
+  selectedDate: string;
+  setSelectedDate: (date: string) => void;
+}
 
-// Subjects you might offer:
-const SUBJECTS = ["Matematică", "Română", "Biologie", "Chimie"];
-
-// Example teachers, but you'll fetch real data from your DB later.
-const TEACHERS = [
-  { id: 1, name: "Prof. Popescu", subject: "Matematică" },
-  { id: 2, name: "Prof. Ionescu", subject: "Matematică" },
-  { id: 3, name: "Prof. Matei", subject: "Română" },
-  { id: 4, name: "Prof. Radulescu", subject: "Română" },
-  // etc.
-];
-
-// Hardcoded timeslots, e.g., 18:00–19:00 or 19:00–20:00
-const TIMESLOTS = ["18:00 - 19:00", "19:00 - 20:00"];
-
-/**
- * Step 1: Choose Subject
- */
-function StepSubject({
-  selectedSubject,
-  setSelectedSubject,
-}: {
-  selectedSubject: string;
-  setSelectedSubject: (val: string) => void;
-}) {
+function StepSubjectAndDate({
+  subjects,
+  selectedSubjectId,
+  setSelectedSubjectId,
+  selectedDate,
+  setSelectedDate,
+}: StepSubjectAndDateProps) {
   return (
-    <div className="flex flex-col items-center space-y-4">
-      <h2 className="text-2xl font-semibold">
-        Alege materia pentru lecția demo
-      </h2>
-      <p className="text-foreground-accent text-center">
-        Ce subiect te interesează cel mai mult? Alege una dintre opțiunile de
-        mai jos.
+    <div className="flex flex-col items-center space-y-6">
+      <h2 className="text-2xl font-semibold">Alege materia și ziua</h2>
+      <p className="text-foreground-accent text-center max-w-md">
+        Ce subiect te interesează cel mai mult și în ce zi dorești lecția demo?
       </p>
 
-      <div className="flex flex-wrap gap-4 justify-center mt-5">
-        {SUBJECTS.map((subj) => (
+      <div className="flex flex-wrap gap-4 justify-center">
+        {subjects.map((subj) => (
           <button
-            key={subj}
-            onClick={() => setSelectedSubject(subj)}
+            key={subj.id}
+            onClick={() => setSelectedSubjectId(subj.id)}
             className={clsx(
               "px-6 py-2 rounded-full border transition-colors",
-              selectedSubject === subj
+              selectedSubjectId === subj.id
                 ? "bg-primary text-black border-primary"
                 : "bg-hero-background text-foreground-accent border-gray-300 hover:border-primary"
             )}
           >
-            {subj}
+            {subj.name}
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-col items-center space-y-2">
+        <label className="text-lg font-medium">Alege data</label>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="px-4 py-2 border rounded focus:outline-none bg-hero-background text-foreground-accent 
+                     hover:border-primary transition-colors"
+        />
       </div>
     </div>
   );
 }
 
-/**
- * Step 2: Pick Teacher & Timeslot
- */
+// =============== Step 2: Teacher + Timeslot ===============
+interface Teacher {
+  id: number;
+  name: string;
+  subjectId: number;
+}
+
+interface StepTeacherTimeslotProps {
+  teachers: Teacher[];
+  selectedTeacherId: number | null;
+  setSelectedTeacherId: (id: number) => void;
+  selectedTimeslot: string;
+  setSelectedTimeslot: (timeslot: string) => void;
+}
+
 function StepTeacherTimeslot({
-  selectedSubject,
-  selectedTeacher,
-  setSelectedTeacher,
+  teachers,
+  selectedTeacherId,
+  setSelectedTeacherId,
   selectedTimeslot,
   setSelectedTimeslot,
-}: {
-  selectedSubject: string;
-  selectedTeacher: number | null;
-  setSelectedTeacher: (val: number) => void;
-  selectedTimeslot: string;
-  setSelectedTimeslot: (val: string) => void;
-}) {
-  // Filter teachers by subject
-  const relevantTeachers = TEACHERS.filter(
-    (t) => t.subject === selectedSubject
-  );
+}: StepTeacherTimeslotProps) {
+  // Hardcoded timeslots
+  const TIMESLOTS = ["16:00 - 17:30", "17:45 - 19:15", "19:30 - 21:00"];
 
   return (
     <div className="flex flex-col items-center space-y-6">
@@ -92,7 +88,8 @@ function StepTeacherTimeslot({
       </h2>
       <p className="text-foreground-accent text-center max-w-md">
         Fiecare profesor poate avea până la 3 elevi într-o lecție demo. Dacă un
-        interval este ocupat pentru un profesor, vom verifica celălalt.
+        interval este ocupat pentru un profesor, vom încerca să te redirecționăm
+        la altul.
       </p>
 
       {/* Teacher selection */}
@@ -101,14 +98,14 @@ function StepTeacherTimeslot({
           Profesori disponibili:
         </p>
         <div className="flex flex-wrap gap-4 justify-center">
-          {relevantTeachers.length > 0 ? (
-            relevantTeachers.map((teacher) => (
+          {teachers.length > 0 ? (
+            teachers.map((teacher) => (
               <button
                 key={teacher.id}
-                onClick={() => setSelectedTeacher(teacher.id)}
+                onClick={() => setSelectedTeacherId(teacher.id)}
                 className={clsx(
                   "px-6 py-2 rounded-full border transition-colors",
-                  selectedTeacher === teacher.id
+                  selectedTeacherId === teacher.id
                     ? "bg-primary text-black border-primary"
                     : "bg-hero-background text-foreground-accent border-gray-300 hover:border-primary"
                 )}
@@ -118,7 +115,7 @@ function StepTeacherTimeslot({
             ))
           ) : (
             <p className="text-red-500">
-              Niciun profesor disponibil pentru {selectedSubject}.
+              Niciun profesor disponibil pentru acest subiect.
             </p>
           )}
         </div>
@@ -127,7 +124,7 @@ function StepTeacherTimeslot({
       {/* Timeslot selection */}
       <div>
         <p className="mb-2 text-lg font-medium text-center">
-          Interval orar (între 18:00 și 20:00):
+          Interval orar (între 16:00 și 21:00):
         </p>
         <div className="flex flex-wrap gap-4 justify-center">
           {TIMESLOTS.map((slot) => (
@@ -150,9 +147,16 @@ function StepTeacherTimeslot({
   );
 }
 
-/**
- * Step 3: Student Info
- */
+// =============== Step 3: Student Info ===============
+interface StepStudentInfoProps {
+  name: string;
+  setName: (name: string) => void;
+  email: string;
+  setEmail: (email: string) => void;
+  phone: string;
+  setPhone: (phone: string) => void;
+}
+
 function StepStudentInfo({
   name,
   setName,
@@ -160,14 +164,7 @@ function StepStudentInfo({
   setEmail,
   phone,
   setPhone,
-}: {
-  name: string;
-  setName: (val: string) => void;
-  email: string;
-  setEmail: (val: string) => void;
-  phone: string;
-  setPhone: (val: string) => void;
-}) {
+}: StepStudentInfoProps) {
   return (
     <div className="flex flex-col items-center space-y-6 w-full max-w-md mx-auto">
       <h2 className="text-2xl font-semibold">Datele tale</h2>
@@ -221,27 +218,36 @@ function StepStudentInfo({
   );
 }
 
-/**
- * Step 4: Confirmation
- */
-function StepConfirm({
-  subject,
-  teacher,
-  timeslot,
-  name,
-  email,
-  phone,
-  onSubmit,
-}: {
-  subject: string;
-  teacher: number | null;
+// =============== Step 4: Confirm ===============
+interface StepConfirmProps {
+  subjectId: number | null;
+  teacherId: number | null;
+  date: string;
   timeslot: string;
   name: string;
   email: string;
   phone: string;
+  subjects: { id: number; name: string }[];
+  teachers: { id: number; name: string }[];
   onSubmit: () => void;
-}) {
-  const teacherName = TEACHERS.find((t) => t.id === teacher)?.name || "N/A";
+}
+
+function StepConfirm({
+  subjectId,
+  teacherId,
+  date,
+  timeslot,
+  name,
+  email,
+  phone,
+  subjects,
+  teachers,
+  onSubmit,
+}: StepConfirmProps) {
+  const subjectName =
+    subjects.find((subj) => subj.id === subjectId)?.name || "N/A";
+
+  const teacherName = teachers.find((t) => t.id === teacherId)?.name || "N/A";
 
   return (
     <div className="flex flex-col items-center space-y-6 w-full max-w-md mx-auto">
@@ -252,10 +258,13 @@ function StepConfirm({
 
       <div className="bg-hero-background p-6 rounded-xl w-full">
         <p className="mb-2">
-          <span className="font-semibold">Materie:</span> {subject}
+          <span className="font-semibold">Materie:</span> {subjectName}
         </p>
         <p className="mb-2">
           <span className="font-semibold">Profesor:</span> {teacherName}
+        </p>
+        <p className="mb-2">
+          <span className="font-semibold">Data aleasă:</span> {date || "N/A"}
         </p>
         <p className="mb-2">
           <span className="font-semibold">Interval orar:</span> {timeslot}
@@ -281,53 +290,130 @@ function StepConfirm({
   );
 }
 
-/**
- * 2) M A I N   C O M P O N E N T
- * ------------------------------
- * Puts the steps together in a wizard-like UI.
- */
+// =============== MAIN PAGE =============== //
 export default function BookTrialPage() {
-  // The current step index: 0=subject, 1=teacher/timeslot, 2=info, 3=confirm
+  // Current step (0 to 3)
   const [stepIndex, setStepIndex] = useState(0);
 
-  // Form states
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [selectedTeacher, setSelectedTeacher] = useState<number | null>(null);
+  // Subject state
+  const [subjects, setSubjects] = useState<{ id: number; name: string }[]>([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
+    null
+  );
+
+  // Date state
+  const [selectedDate, setSelectedDate] = useState("");
+
+  // Teacher + Timeslot
+  const [teachers, setTeachers] = useState<
+    { id: number; name: string; subjectId: number }[]
+  >([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(
+    null
+  );
   const [selectedTimeslot, setSelectedTimeslot] = useState("");
+
+  // Student info
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Simple validations for each step (can be more thorough)
+  // Fetch subjects on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/subjects");
+        if (res.ok) {
+          const data = await res.json();
+          setSubjects(data.subjects); // e.g. { subjects: [...] }
+        }
+      } catch (err) {
+        console.error("Error fetching subjects:", err);
+      }
+    })();
+  }, []);
+
+  // Fetch teachers whenever subjectId changes
+  useEffect(() => {
+    if (!selectedSubjectId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/teachers?subjectId=${selectedSubjectId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTeachers(data.teachers); // e.g. { teachers: [...] }
+        } else {
+          setTeachers([]);
+        }
+      } catch (err) {
+        console.error("Error fetching teachers:", err);
+        setTeachers([]);
+      }
+    })();
+  }, [selectedSubjectId]);
+
+  // Wizard navigation
   const canGoNext = () => {
-    if (stepIndex === 0 && selectedSubject === "") return false;
-    if (stepIndex === 1 && (!selectedTeacher || selectedTimeslot === ""))
+    // Step 0: need subject + date
+    if (stepIndex === 0 && (!selectedSubjectId || !selectedDate)) return false;
+    // Step 1: need teacher + timeslot
+    if (stepIndex === 1 && (!selectedTeacherId || !selectedTimeslot))
       return false;
+    // Step 2: need name + email
     if (stepIndex === 2 && (!name || !email)) return false;
-    // step 3 has the confirm button
     return true;
   };
 
-  // Step forward (but only if valid)
   const goNext = () => {
     if (!canGoNext()) return;
-    setStepIndex((prev) => prev + 1);
+    setStepIndex(stepIndex + 1);
   };
-
-  // Step backward
   const goBack = () => {
-    setStepIndex((prev) => Math.max(prev - 1, 0));
+    setStepIndex(Math.max(0, stepIndex - 1));
   };
 
-  // On final submit
-  const handleFinalSubmit = () => {
-    // THIS is where you'd implement your capacity checks, seat counting, etc.
-    // For example, you'd call your API:
-    //   await fetch("/api/bookSlot", { method: "POST", body: { subject, teacher, timeslot, name, email, phone } })
-    // Then handle success / error, show a success message or redirect.
+  // Final POST to /api/bookSlot
+  const handleFinalSubmit = async () => {
+    if (
+      !selectedSubjectId ||
+      !selectedTeacherId ||
+      !selectedTimeslot ||
+      !selectedDate ||
+      !name ||
+      !email
+    ) {
+      alert("Date incomplete. Verifică formularul.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/bookSlot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subjectId: selectedSubjectId,
+          teacherId: selectedTeacherId,
+          date: selectedDate,
+          timeslot: selectedTimeslot,
+          name,
+          email,
+          phone,
+        }),
+      });
 
-    alert("Lecția demo a fost programată cu succes!");
-    // Optionally reset form or navigate to a "thank you" page.
+      if (!response.ok) {
+        const errData = await response.json();
+        alert(
+          `Eroare: ${errData.message || "Nu s-a putut finaliza programarea."}`
+        );
+        return;
+      }
+
+      alert("Lecția demo a fost programată cu succes!");
+      // Optionally reset form or redirect to a "Mulțumim" page
+    } catch (err) {
+      console.error("Error final submit:", err);
+      alert("A apărut o eroare. Încearcă din nou.");
+    }
   };
 
   // Render step
@@ -335,17 +421,20 @@ export default function BookTrialPage() {
     switch (stepIndex) {
       case 0:
         return (
-          <StepSubject
-            selectedSubject={selectedSubject}
-            setSelectedSubject={setSelectedSubject}
+          <StepSubjectAndDate
+            subjects={subjects}
+            selectedSubjectId={selectedSubjectId}
+            setSelectedSubjectId={setSelectedSubjectId}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
           />
         );
       case 1:
         return (
           <StepTeacherTimeslot
-            selectedSubject={selectedSubject}
-            selectedTeacher={selectedTeacher}
-            setSelectedTeacher={setSelectedTeacher}
+            teachers={teachers}
+            selectedTeacherId={selectedTeacherId}
+            setSelectedTeacherId={setSelectedTeacherId}
             selectedTimeslot={selectedTimeslot}
             setSelectedTimeslot={setSelectedTimeslot}
           />
@@ -364,12 +453,15 @@ export default function BookTrialPage() {
       case 3:
         return (
           <StepConfirm
-            subject={selectedSubject}
-            teacher={selectedTeacher}
+            subjectId={selectedSubjectId}
+            teacherId={selectedTeacherId}
+            date={selectedDate}
             timeslot={selectedTimeslot}
             name={name}
             email={email}
             phone={phone}
+            subjects={subjects}
+            teachers={teachers}
             onSubmit={handleFinalSubmit}
           />
         );
@@ -379,7 +471,7 @@ export default function BookTrialPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-32 px-4">
+    <div className="max-w-3xl mx-auto py-36 px-4">
       <h1 className="text-3xl md:text-4xl font-bold text-center mb-6">
         Programează lecția demo
       </h1>
@@ -387,7 +479,7 @@ export default function BookTrialPage() {
       {/* Render the current step */}
       {renderStep()}
 
-      {/* Navigation buttons (except on final step) */}
+      {/* Navigation (only show for Steps 0-2, because Step 3 has final confirmation button) */}
       {stepIndex < 3 && (
         <div className="flex items-center justify-between mt-10 max-w-md mx-auto w-full">
           {stepIndex > 0 ? (

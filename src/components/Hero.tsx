@@ -68,7 +68,7 @@ const Hero: React.FC = () => {
         */}
         <div className="animate-fadeInUp mt-8 flex justify-center">
           <a
-            href="/programeaza-lectia-demo"
+            href="/book"
             className="bg-primary text-black font-semibold px-8 py-3 rounded-full 
                        hover:bg-primary-accent transition-colors"
             style={{ animationDelay: "0.15s" }}
