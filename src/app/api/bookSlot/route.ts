@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BookingStatus } from "@prisma/client";
+import { BookingStatus, Booking } from "@prisma/client";
 import { cookies } from "next/headers";
 import nodemailer from "nodemailer";
 import { google } from "googleapis";
@@ -12,7 +12,11 @@ export const dynamic = "force-dynamic";
 // Maximum group size
 const MAX_CAPACITY = 3;
 
-type FullBooking = Awaited<ReturnType<typeof prisma.booking.findFirst>> & {
+/**
+ * Define a type representing a booking that includes
+ * teacher, subject, and student relations.
+ */
+export type FullBooking = Booking & {
   teacher: {
     id: number;
     name: string;
@@ -131,7 +135,7 @@ export async function POST(req: NextRequest) {
     await checkAndConfirmGroup(Number(teacherId), date, timeslot);
 
     return NextResponse.json({ success: true }, { status: 200 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error booking:", err);
     return NextResponse.json(
       { message: "Eroare de server. Încercați mai târziu." },
@@ -171,7 +175,7 @@ async function findAlternativeTeacher(
  *  - sends "PENDING" email notifications
  */
 async function upsertCalendarEventAndSendEmails(
-  booking: any, // or more specific type
+  booking: FullBooking,
   switched: boolean
 ) {
   // 1) Build the start/end datetime
@@ -220,7 +224,8 @@ async function upsertCalendarEventAndSendEmails(
   });
 
   // We want teacher + student in the event
-  const teacherEmail = booking.teacher.email || "teacher@example.com";
+  const teacherEmail =
+    booking.teacher.email || "cristian@prodiusenterprise.com";
   const studentEmail = booking.student.email;
   const eventAttendees = [teacherEmail, studentEmail];
 
@@ -291,7 +296,7 @@ async function upsertCalendarEventAndSendEmails(
 /**
  * Send teacher+student "PENDING" emails
  */
-async function sendRegistrationEmail(booking: any, switched: boolean) {
+async function sendRegistrationEmail(booking: FullBooking, switched: boolean) {
   const { name, email, phone } = booking.student;
   const teacherName = booking.teacher.name;
   const teacherEmail = booking.teacher.email || "admin@example.com";
@@ -385,6 +390,7 @@ async function checkAndConfirmGroup(
     },
   });
 
+  // fullBookings is an array of FullBooking objects
   if (fullBookings.length >= MAX_CAPACITY) {
     const bookingIds = fullBookings.map((b) => b.id);
     await prisma.booking.updateMany({
@@ -399,16 +405,16 @@ async function checkAndConfirmGroup(
 /**
  * Notify teacher + 3 students that the group is now CONFIRMED
  */
-async function sendGroupFormedEmail(bookings: any[]) {
+async function sendGroupFormedEmail(bookings: FullBooking[]) {
   if (bookings.length === 0) return;
   const teacher = bookings[0].teacher;
   const teacherEmail = teacher.email || "admin@example.com";
   const subjectName = bookings[0].subject.name;
   const dateStr = new Date(bookings[0].date).toISOString().split("T")[0];
   const timeslot = bookings[0].timeslot;
+  const teacherName = teacher.name;
 
   const students = bookings.map((b) => b.student);
-  const teacherName = teacher.name;
 
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
