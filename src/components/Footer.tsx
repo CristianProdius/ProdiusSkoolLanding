@@ -42,6 +42,16 @@ const Footer: React.FC = () => {
                 </Link>
               </li>
             ))}
+            <li className="mb-2">
+              <Link href="/privacy" className="hover:text-foreground">
+                Politica de Confidențialitate
+              </Link>
+            </li>
+            <li className="mb-2">
+              <Link href="/terms" className="hover:text-foreground">
+                Termeni și Condiții
+              </Link>
+            </li>
           </ul>
         </div>
 

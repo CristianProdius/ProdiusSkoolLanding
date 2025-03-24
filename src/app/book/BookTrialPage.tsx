@@ -318,6 +318,9 @@ export default function BookTrialPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
+  // **New**: a loading state for the final fetch
+  const [submitting, setSubmitting] = useState(false);
+
   // Fetch subjects on mount
   useEffect(() => {
     (async () => {
@@ -388,6 +391,10 @@ export default function BookTrialPage() {
       alert("Date incomplete. Verifică formularul.");
       return;
     }
+
+    // Start loading
+    setSubmitting(true);
+
     try {
       const response = await fetch("/api/bookSlot", {
         method: "POST",
@@ -413,10 +420,14 @@ export default function BookTrialPage() {
       }
 
       alert("Lecția demo a fost programată cu succes!");
-      // Optionally reset form or redirect to a "Mulțumim" page
+
+      //TO DO Optionally reset form or redirect to a "Mulțumim" page
     } catch (err) {
       console.error("Error final submit:", err);
       alert("A apărut o eroare. Încearcă din nou.");
+    } finally {
+      // Stop loading
+      setSubmitting(false);
     }
   };
 
@@ -482,6 +493,14 @@ export default function BookTrialPage() {
 
       {/* Render the current step */}
       {renderStep()}
+      {/* Show a spinner or overlay if submitting is true */}
+      {submitting && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow">
+            <p className="text-lg font-medium">Se procesează...</p>
+          </div>
+        </div>
+      )}
 
       {/* Navigation (only show for Steps 0-2, because Step 3 has final confirmation button) */}
       {stepIndex < 3 && (

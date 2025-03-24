@@ -29,10 +29,10 @@ const FAQ: React.FC = () => {
           </p>
           {/* Update the email as desired */}
           <a
-            href="mailto:contact@prodiusskool"
+            href="mailto:cristian@prodiusenterprise.com"
             className="mt-3 block text-xl lg:text-3xl text-secondary font-semibold hover:underline text-center lg:text-left"
           >
-            contact@prodiusskool
+            cristian@prodiusenterprise.com
           </a>
         </div>
 

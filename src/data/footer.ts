@@ -24,8 +24,8 @@ export const footerDetails: {
       url: "#testimonials",
     },
   ],
-  email: "contact@prodiusskool",
-  telephone: "+40 123 456 789", // Example Romanian format
+  email: "cristian@prodiusenterprise.com",
+  telephone: "+373 68 200 722", // Example Romanian format
   socials: {
     // Add or remove platforms as desired
     twitter: "https://twitter.com/Twitter",
