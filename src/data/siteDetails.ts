@@ -4,8 +4,9 @@ export const siteDetails = {
   metadata: {
     title: "Prodius Skool",
     description:
-      "Prodius Skool is a platform that helps you learn programming languages and computer science concepts.",
-    keywords: "programming, computer science, coding, learning, education",
+      "Prodius Skool este o scoala online care te pregateste pentru examenele nationale.",
+    keywords:
+      "scoala, online, examene, nationale, pregatire, bacalaureat, capacitate",
   },
   language: "en-us",
   locale: "en-US",
