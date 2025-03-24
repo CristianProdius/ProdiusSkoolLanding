@@ -322,7 +322,7 @@ export default function BookTrialPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/subjects");
+        const res = await fetch("/api/subjects", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setSubjects(data.subjects); // e.g. { subjects: [...] }
@@ -338,7 +338,10 @@ export default function BookTrialPage() {
     if (!selectedSubjectId) return;
     (async () => {
       try {
-        const res = await fetch(`/api/teachers?subjectId=${selectedSubjectId}`);
+        const res = await fetch(
+          `/api/teachers?subjectId=${selectedSubjectId}`,
+          { cache: "no-store" }
+        );
         if (res.ok) {
           const data = await res.json();
           setTeachers(data.teachers); // e.g. { teachers: [...] }
