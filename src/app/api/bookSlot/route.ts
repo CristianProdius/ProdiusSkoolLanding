@@ -224,8 +224,7 @@ async function upsertCalendarEventAndSendEmails(
   });
 
   // We want teacher + student in the event
-  const teacherEmail =
-    booking.teacher.email || "cristian@prodiusenterprise.com";
+  const teacherEmail = booking.teacher.email || "contact@prodiusskool.com";
   const studentEmail = booking.student.email;
   const eventAttendees = [teacherEmail, studentEmail];
 

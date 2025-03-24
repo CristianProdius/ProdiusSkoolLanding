@@ -67,15 +67,15 @@ const Footer: React.FC = () => {
               Email: {footerDetails.email}
             </a>
           )}
-
+          {/*
           {footerDetails.telephone && (
-            <a
+             <a
               href={`tel:${footerDetails.telephone}`}
               className="block text-foreground-accent hover:text-foreground mt-2"
             >
               Telefon: {footerDetails.telephone}
-            </a>
-          )}
+            </a> 
+          )}*/}
 
           {footerDetails.socials && (
             <div className="mt-5 flex items-center gap-5 flex-wrap">
