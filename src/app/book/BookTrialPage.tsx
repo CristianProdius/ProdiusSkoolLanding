@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-("use client");
 import React, { useEffect, useState } from "react";
 import clsx from "clsx";
 
