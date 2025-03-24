@@ -1,10 +1,9 @@
-// app/api/subjects/route.ts
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 const prisma = new PrismaClient();
 
 export async function GET() {
