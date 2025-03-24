@@ -28,7 +28,7 @@ const Logos: React.FC = () => {
         {/* Babes University */}
         <div className="w-12 sm:w-16 md:w-20 lg:w-24">
           <Image
-            src="/universtiy/Babes.svg"
+            src="/universtiy/babes.svg"
             alt="Babes University"
             layout="responsive"
             width={48}
@@ -61,7 +61,7 @@ const Logos: React.FC = () => {
         {/* Babes University */}
         <div className="w-12 sm:w-16 md:w-20 lg:w-24">
           <Image
-            src="/universtiy/Babes.svg"
+            src="/universtiy/babes.svg"
             alt="Babes University"
             layout="responsive"
             width={48}
