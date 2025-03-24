@@ -1,4 +1,5 @@
-// app/book/page.tsx (Server Component)
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import BookTrialPage from "./BookTrialPage";
