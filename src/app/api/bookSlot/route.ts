@@ -1,13 +1,13 @@
+// Tell Next.js not to pre-render or use Edge:
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { BookingStatus, Booking } from "@prisma/client";
 import { cookies } from "next/headers";
 import nodemailer from "nodemailer";
 import { google } from "googleapis";
 import { prisma } from "@/lib/prisma";
-
-// Tell Next.js not to pre-render or use Edge:
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 // Maximum group size
 const MAX_CAPACITY = 3;
