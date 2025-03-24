@@ -398,6 +398,7 @@ export default function BookTrialPage() {
           email,
           phone,
         }),
+        cache: "no-store",
       });
 
       if (!response.ok) {
