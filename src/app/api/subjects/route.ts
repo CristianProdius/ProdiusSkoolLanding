@@ -1,10 +1,10 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// app/api/subjects/route.ts
 
-import { PrismaClient } from "@prisma/client";
+export const runtime = "nodejs"; // Use full Node.js
+export const dynamic = "force-dynamic"; // Force Next.js to treat this route as dynamic
+
 import { NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma"; // import the singleton
 
 export async function GET() {
   try {
