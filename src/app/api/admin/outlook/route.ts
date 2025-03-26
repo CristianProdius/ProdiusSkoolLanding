@@ -1,6 +1,5 @@
 // app/api/admin/outlook/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {

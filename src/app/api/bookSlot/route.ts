@@ -1,19 +1,61 @@
 // app/api/book/route.ts
+
+// Tell Next.js not to pre-render or use Edge:
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import type { Booking } from "@prisma/client"; // import as type only
+import { BookingStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { BookingStatus, Booking } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
 
 // Maximum group size
 const MAX_CAPACITY = 3;
 
+/**
+ * Define a type representing a booking that includes
+ * teacher, subject, and student relations.
+ */
+export type FullBooking = Booking & {
+  teacher: {
+    id: number;
+    name: string;
+    email?: string | null;
+  };
+  subject: {
+    name: string;
+  };
+  student: {
+    name: string;
+    email: string;
+    phone?: string | null;
+  };
+};
+
+/**
+ * Minimal type for Outlook event attendee
+ * to avoid using `any`.
+ */
+interface OutlookAttendee {
+  emailAddress: {
+    address: string;
+  };
+  type?: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { subjectId, teacherId, date, timeslot, name, email, phone } = body;
+    const {
+      subjectId,
+      teacherId,
+      date, // e.g. "2023-10-05"
+      timeslot, // e.g. "18:00 - 19:00"
+      name,
+      email,
+      phone,
+    } = body;
 
     // 1) Validate required fields
     if (!subjectId || !teacherId || !date || !timeslot || !name || !email) {
@@ -26,7 +68,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2) Check capacity
+    // 2) Check capacity for the chosen teacher/date/timeslot
     const currentCount = await prisma.booking.count({
       where: {
         teacherId: Number(teacherId),
@@ -36,7 +78,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 3) If teacher is full, try alternative
+    // 3) If teacher is full, attempt to switch
     if (currentCount >= MAX_CAPACITY) {
       const altTeacherId = await findAlternativeTeacher(
         Number(subjectId),
@@ -50,7 +92,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Book with alternative
+      // Book with the alternative teacher
       const booking = await prisma.booking.create({
         data: {
           subject: { connect: { id: Number(subjectId) } },
@@ -68,7 +110,7 @@ export async function POST(req: NextRequest) {
         include: { teacher: true, subject: true, student: true },
       });
 
-      // Upsert Outlook event
+      // Upsert the Calendar event + send "PENDING" emails
       await upsertCalendarEventAndSendEmails(booking, true);
 
       // Then check if group is full
@@ -80,7 +122,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4) Otherwise, create booking
+    // 4) Otherwise, create booking with chosen teacher
     const booking = await prisma.booking.create({
       data: {
         subject: { connect: { id: Number(subjectId) } },
@@ -98,10 +140,10 @@ export async function POST(req: NextRequest) {
       include: { teacher: true, subject: true, student: true },
     });
 
-    // Upsert event
+    // Upsert the Calendar event + send "PENDING" emails
     await upsertCalendarEventAndSendEmails(booking, false);
 
-    // 5) Check if group full
+    // 5) Check if the group is now full
     await checkAndConfirmGroup(Number(teacherId), date, timeslot);
 
     return NextResponse.json({ success: true }, { status: 200 });
@@ -114,56 +156,65 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// helper
+// Helper: find an alternative teacher with free capacity
 async function findAlternativeTeacher(
   subjectId: number,
-  date: string,
-  timeslot: string
+  _date: string,
+  _timeslot: string
 ) {
+  // prefix unused params with _ if not used
   const teachers = await prisma.teacher.findMany({ where: { subjectId } });
+
   for (const t of teachers) {
+    // Check capacity
     const c = await prisma.booking.count({
       where: {
         teacherId: t.id,
-        date: new Date(date),
-        timeslot,
-        status: { not: "CANCELED" },
+        // We don't actually use date/timeslot here for anything else
+        status: { not: BookingStatus.CANCELED },
       },
     });
-    if (c < MAX_CAPACITY) return t.id;
+    if (c < MAX_CAPACITY) {
+      return t.id; // first teacher with capacity
+    }
   }
   return null;
 }
 
-// Upsert event in Outlook
+/**
+ *  upsertCalendarEventAndSendEmails:
+ *  - upsert an Outlook calendar event (if teacher tokens found in DB)
+ *  - sends "PENDING" email notifications
+ */
 async function upsertCalendarEventAndSendEmails(
-  booking: any,
+  booking: FullBooking,
   switched: boolean
 ) {
-  // 1) Build date/time
+  // 1) Build start & end Date from booking data
   const [startH, startM] = booking.timeslot.split("-")[0].trim().split(":");
   const [endH, endM] = booking.timeslot.split("-")[1].trim().split(":");
-  const startDate = new Date(booking.date);
+  const startDate = new Date(booking.date); // e.g. 2025-03-10
   startDate.setHours(+startH, +startM, 0, 0);
+
   const endDate = new Date(booking.date);
   endDate.setHours(+endH, +endM, 0, 0);
 
-  // 2) Load the teacher's tokens from DB: we use id="teacher-outlook"
+  // 2) Load the teacher's Outlook tokens from DB (id = "teacher-outlook")
   const tokenRow = await prisma.oAuthToken.findUnique({
     where: { id: "teacher-outlook" },
   });
   if (!tokenRow) {
+    // fallback: just send emails or do nothing
     console.warn(
-      "No Outlook tokens found for teacher - skipping event creation"
+      "No Outlook tokens found for teacher-outlook. Skipping event creation."
     );
     await sendRegistrationEmail(booking, switched);
     return;
   }
 
   const accessToken = tokenRow.accessToken;
-  // Optionally check if expired
 
-  // 3) Check if we already have existing event
+  // 3) Check if we already have an existing event in DB
   const existingEvent = await prisma.calendarEvent.findUnique({
     where: {
       unique_event_per_slot: {
@@ -174,8 +225,10 @@ async function upsertCalendarEventAndSendEmails(
     },
   });
 
+  let outlookEventId: string | null = null;
+
   if (!existingEvent) {
-    // CREATE new event
+    // CREATE a new event in Outlook
     const createResponse = await fetch(
       "https://graph.microsoft.com/v1.0/me/events",
       {
@@ -221,22 +274,22 @@ async function upsertCalendarEventAndSendEmails(
       );
     } else {
       const eventJson = await createResponse.json();
-      const outlookEventId = eventJson.id;
-      // store in DB
+      outlookEventId = eventJson.id; // store event id
       await prisma.calendarEvent.create({
         data: {
-          teacher: { connect: { id: booking.teacher.id } },
+          teacherId: booking.teacher.id,
           date: booking.date,
           timeslot: booking.timeslot,
           outlookEventId,
-          googleEventId: "", // Provide a default or actual value
+          googleEventId: "", // Provide a default or actual value for googleEventId
         },
       });
     }
   } else {
     // UPDATE existing event: add new attendee if not present
-    const outlookEventId = existingEvent.outlookEventId;
+    outlookEventId = existingEvent.outlookEventId;
     if (outlookEventId) {
+      // 1) Fetch existing event from Graph
       const eventRes = await fetch(
         `https://graph.microsoft.com/v1.0/me/events/${outlookEventId}`,
         {
@@ -245,17 +298,24 @@ async function upsertCalendarEventAndSendEmails(
       );
       if (eventRes.ok) {
         const eventData = await eventRes.json();
-        const currentAttendees = eventData.attendees || [];
-        const newAttendee = {
+        const currentAttendees: OutlookAttendee[] = eventData.attendees || [];
+
+        // Build the new attendee object
+        const newAttendee: OutlookAttendee = {
           emailAddress: { address: booking.student.email },
           type: "required",
         };
+
+        // If not already present, push it
         if (
           !currentAttendees.some(
-            (a: any) => a.emailAddress.address === booking.student.email
+            (a: OutlookAttendee) =>
+              a.emailAddress.address === booking.student.email
           )
         ) {
           currentAttendees.push(newAttendee);
+
+          // 2) Patch the event with updated attendees
           const patchRes = await fetch(
             `https://graph.microsoft.com/v1.0/me/events/${outlookEventId}`,
             {
@@ -264,9 +324,12 @@ async function upsertCalendarEventAndSendEmails(
                 Authorization: `Bearer ${accessToken}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ attendees: currentAttendees }),
+              body: JSON.stringify({
+                attendees: currentAttendees,
+              }),
             }
           );
+
           if (!patchRes.ok) {
             console.error(
               "Failed to update Outlook event attendees",
@@ -278,20 +341,178 @@ async function upsertCalendarEventAndSendEmails(
     }
   }
 
-  // 4) Send custom “PENDING” emails
+  // 4) Finally, send "PENDING" emails
   await sendRegistrationEmail(booking, switched);
 }
 
-// Send pending emails
-async function sendRegistrationEmail(booking: any, switched: boolean) {
-  // your existing logic
+/**
+ * Send teacher+student "PENDING" emails
+ */
+async function sendRegistrationEmail(booking: FullBooking, switched: boolean) {
+  const { name, email, phone } = booking.student;
+  const teacherName = booking.teacher.name;
+  const teacherEmail = booking.teacher.email || "admin@example.com";
+  const subjectName = booking.subject.name;
+
+  const dateStr = new Date(booking.date).toISOString().split("T")[0];
+  const { timeslot } = booking;
+
+  // Setup nodemailer
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  const teacherMail = {
+    from: "no-reply@myschool.com",
+    to: teacherEmail,
+    subject: `Nouă lecție (PENDING): ${subjectName}`,
+    text: `Salut, ${teacherName}!\n\nElevul ${name} (email: ${email}, tel: ${
+      phone || "N/A"
+    }) s-a înscris pentru lecția demo:\n
+    - Materie: ${subjectName}
+    - Data: ${dateStr}
+    - Interval orar: ${timeslot}
+    ${
+      switched
+        ? "\nA fost redirecționat la dvs. deoarece alt profesor era ocupat.\n"
+        : ""
+    }
+    Lecția este PENDING. Vom confirma când se atinge 3 elevi.`,
+  };
+
+  const studentMail = {
+    from: "no-reply@myschool.com",
+    to: email,
+    subject: `Confirmare înscriere lecție demo (PENDING) - ${subjectName}`,
+    text: `Bună, ${name}!\n\nTe-ai înscris la lecția demo (${subjectName}),
+    data: ${dateStr}, oră: ${timeslot}\nProfesor: ${teacherName}\n
+    Momentan ești în stadiu PENDING; vom confirma când se formează un grup de 3 elevi.
+    ${
+      switched
+        ? "Te-am repartizat la un alt profesor, deoarece cel inițial era ocupat."
+        : ""
+    }\n\nMulțumim!`,
+  };
+
+  try {
+    await transporter.sendMail(teacherMail);
+    await transporter.sendMail(studentMail);
+  } catch (e) {
+    console.error("Failed to send registration emails:", e);
+  }
 }
 
-// if 3 PENDING => confirm
+/**
+ * If we have 3 PENDING => mark them CONFIRMED & send “group formed” email
+ */
 async function checkAndConfirmGroup(
-  teacherId: number,
-  date: string,
-  timeslot: string
+  _teacherId: number,
+  _date: string,
+  _timeslot: string
 ) {
-  // same logic
+  // if not used in the logic, prefix them with _
+  const pendingCount = await prisma.booking.count({
+    where: {
+      teacherId: _teacherId,
+      date: new Date(_date),
+      timeslot: _timeslot,
+      status: BookingStatus.PENDING,
+    },
+  });
+
+  if (pendingCount < MAX_CAPACITY) return; // not full yet
+
+  const fullBookings = await prisma.booking.findMany({
+    where: {
+      teacherId: _teacherId,
+      date: new Date(_date),
+      timeslot: _timeslot,
+      status: BookingStatus.PENDING,
+    },
+    include: {
+      student: true,
+      teacher: true,
+      subject: true,
+    },
+  });
+
+  if (fullBookings.length >= MAX_CAPACITY) {
+    const bookingIds = fullBookings.map((b) => b.id);
+    await prisma.booking.updateMany({
+      where: { id: { in: bookingIds } },
+      data: { status: BookingStatus.CONFIRMED },
+    });
+
+    await sendGroupFormedEmail(fullBookings);
+  }
+}
+
+/**
+ * Notify teacher + 3 students that the group is now CONFIRMED
+ */
+async function sendGroupFormedEmail(bookings: FullBooking[]) {
+  if (bookings.length === 0) return;
+  const teacher = bookings[0].teacher;
+  const teacherEmail = teacher.email || "admin@example.com";
+  const subjectName = bookings[0].subject.name;
+  const dateStr = new Date(bookings[0].date).toISOString().split("T")[0];
+  const timeslot = bookings[0].timeslot;
+  const teacherName = teacher.name;
+
+  const students = bookings.map((b) => b.student);
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  // Email teacher
+  const teacherMail = {
+    from: "no-reply@myschool.com",
+    to: teacherEmail,
+    subject: `Grup complet (3 elevi) CONFIRMAT pentru ${subjectName}`,
+    text: `Salut, ${teacherName}!\n\nS-au strâns 3 elevi pentru lecția demo:\n
+    - Materie: ${subjectName}
+    - Data: ${dateStr}
+    - Interval: ${timeslot}\n\nElevi:\n${students
+      .map((s) => `• ${s.name} (${s.email}, tel: ${s.phone || "N/A"})`)
+      .join("\n")}
+    \nLecția este CONFIRMED. Succes!`,
+  };
+
+  try {
+    await transporter.sendMail(teacherMail);
+  } catch (e) {
+    console.error("Error sending group-formed mail to teacher:", e);
+  }
+
+  // Email each student
+  for (const stud of students) {
+    const studentMail = {
+      from: "no-reply@myschool.com",
+      to: stud.email,
+      subject: `Lecția demo este CONFIRMATĂ: ${subjectName}`,
+      text: `Bună, ${stud.name}!\n\nFelicitări, s-a format grupul complet (3 elevi) pentru:\n
+      - Materie: ${subjectName}
+      - Data: ${dateStr}
+      - Interval: ${timeslot}
+      - Profesor: ${teacherName}\n\nNe vedem la lecție! Mult succes!`,
+    };
+    try {
+      await transporter.sendMail(studentMail);
+    } catch (err) {
+      console.error("Error sending group-formed mail to student:", err);
+    }
+  }
 }
