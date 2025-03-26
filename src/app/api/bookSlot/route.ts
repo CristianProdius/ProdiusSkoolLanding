@@ -159,19 +159,19 @@ export async function POST(req: NextRequest) {
 // Helper: find an alternative teacher with free capacity
 async function findAlternativeTeacher(
   subjectId: number,
-  _date: string,
-  _timeslot: string
+  date: string,
+  timeslot: string
 ) {
-  // prefix unused params with _ if not used
   const teachers = await prisma.teacher.findMany({ where: { subjectId } });
 
   for (const t of teachers) {
-    // Check capacity
+    // Check capacity specifically for that date/timeslot
     const c = await prisma.booking.count({
       where: {
         teacherId: t.id,
-        // We don't actually use date/timeslot here for anything else
-        status: { not: BookingStatus.CANCELED },
+        date: new Date(date),
+        timeslot,
+        status: { not: "CANCELED" },
       },
     });
     if (c < MAX_CAPACITY) {
