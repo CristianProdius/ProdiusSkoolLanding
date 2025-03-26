@@ -15,6 +15,7 @@
     "@headlessui/react": "^2.1.8",
     "@next/third-parties": "^14.2.13",
     "@prisma/client": "^6.5.0",
+    "@vercel/analytics": "^1.5.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.11.9",
     "gaxios": "^6.7.1",
