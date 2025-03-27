@@ -6,13 +6,16 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 model Subject {
-  id       Int       @id @default(autoincrement())
-  name     String    @unique
-  bookings Booking[]
-  teachers Teacher[]
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  nrCursuri   Int
+  nrLectii    Int
+  maxCapacity Int
+  teachers    Teacher[]
+  bookings    Booking[]
 }
+
 
 model Teacher {
   id             Int             @id @default(autoincrement())

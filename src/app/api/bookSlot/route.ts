@@ -10,9 +10,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
 
-// Maximum group size
-const MAX_CAPACITY = 3;
-
 /**
  * Define a type representing a booking that includes
  * teacher, subject, and student relations.
@@ -68,6 +65,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const subject = await prisma.subject.findUnique({
+      where: { id: Number(subjectId) },
+    });
+    if (!subject) {
+      return NextResponse.json(
+        { message: `Subject ${subjectId} not found.` },
+        { status: 400 }
+      );
+    }
+    const maxCapacity = subject.maxCapacity;
+
     // 2) Check capacity for the chosen teacher/date/timeslot
     const currentCount = await prisma.booking.count({
       where: {
@@ -79,7 +87,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 3) If teacher is full, attempt to switch
-    if (currentCount >= MAX_CAPACITY) {
+    if (currentCount >= maxCapacity) {
       const altTeacherId = await findAlternativeTeacher(
         Number(subjectId),
         date,
@@ -162,19 +170,26 @@ async function findAlternativeTeacher(
   date: string,
   timeslot: string
 ) {
+  // 1) Get the subject
+  const subject = await prisma.subject.findUnique({
+    where: { id: subjectId },
+  });
+  if (!subject) return null; // or throw an error
+  const maxCap = subject.maxCapacity;
+
+  // 2) Get all teachers of that subject
   const teachers = await prisma.teacher.findMany({ where: { subjectId } });
 
   for (const t of teachers) {
-    // Check capacity specifically for that date/timeslot
     const c = await prisma.booking.count({
       where: {
         teacherId: t.id,
         date: new Date(date),
         timeslot,
-        status: { not: "CANCELED" },
+        status: { not: BookingStatus.CANCELED },
       },
     });
-    if (c < MAX_CAPACITY) {
+    if (c < maxCap) {
       return t.id; // first teacher with capacity
     }
   }
@@ -410,27 +425,41 @@ async function sendRegistrationEmail(booking: FullBooking, switched: boolean) {
  * If we have 3 PENDING => mark them CONFIRMED & send “group formed” email
  */
 async function checkAndConfirmGroup(
-  _teacherId: number,
-  _date: string,
-  _timeslot: string
+  teacherId: number,
+  date: string,
+  timeslot: string
 ) {
-  // if not used in the logic, prefix them with _
+  // 1) Load the teacher (and its subject) from DB
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    include: {
+      subject: true, // => teacher.subject
+    },
+  });
+  if (!teacher || !teacher.subject) {
+    // no teacher or subject => skip
+    return;
+  }
+
+  const maxCapacity = teacher.subject.maxCapacity;
+
+  // 2) Count how many are currently PENDING
   const pendingCount = await prisma.booking.count({
     where: {
-      teacherId: _teacherId,
-      date: new Date(_date),
-      timeslot: _timeslot,
+      teacherId,
+      date: new Date(date),
+      timeslot,
       status: BookingStatus.PENDING,
     },
   });
+  if (pendingCount < maxCapacity) return; // not full yet
 
-  if (pendingCount < MAX_CAPACITY) return; // not full yet
-
+  // 3) If we meet or exceed maxCapacity => confirm them
   const fullBookings = await prisma.booking.findMany({
     where: {
-      teacherId: _teacherId,
-      date: new Date(_date),
-      timeslot: _timeslot,
+      teacherId,
+      date: new Date(date),
+      timeslot,
       status: BookingStatus.PENDING,
     },
     include: {
@@ -440,7 +469,7 @@ async function checkAndConfirmGroup(
     },
   });
 
-  if (fullBookings.length >= MAX_CAPACITY) {
+  if (fullBookings.length >= maxCapacity) {
     const bookingIds = fullBookings.map((b) => b.id);
     await prisma.booking.updateMany({
       where: { id: { in: bookingIds } },
