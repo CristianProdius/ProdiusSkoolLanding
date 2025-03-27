@@ -49,6 +49,7 @@ async function handleCallback(request: NextRequest, code: string) {
       "profile",
       "offline_access",
       "https://graph.microsoft.com/Calendars.ReadWrite",
+      "https://graph.microsoft.com/Mail.Send",
     ].join(" ")
   );
 

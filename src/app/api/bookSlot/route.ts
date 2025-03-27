@@ -543,21 +543,24 @@ async function refreshOutlookTokenIfNeeded() {
   }
   const now = Date.now();
   if (tokenRow.expiresAt.getTime() > now + 60_000) {
-    return tokenRow;
+    return tokenRow; // still valid
   }
 
   console.log("Outlook token expired or near expiry. Refreshing...");
+
   const tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
   const bodyParams = new URLSearchParams({
     client_id: process.env.OUTLOOK_CLIENT_ID || "",
     client_secret: process.env.OUTLOOK_CLIENT_SECRET || "",
     grant_type: "refresh_token",
     refresh_token: tokenRow.refreshToken,
+    // Request the same scopes as the initial login:
     scope: [
       "openid",
       "profile",
       "offline_access",
       "https://graph.microsoft.com/Calendars.ReadWrite",
+      "https://graph.microsoft.com/Mail.Send",
     ].join(" "),
   });
 
