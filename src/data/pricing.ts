@@ -1,37 +1,113 @@
-// /data/pricing.ts
-import { IPricing } from "@/types";
+// data/courses.ts
+import { ICourse } from "@/types";
 
-export const tiers: IPricing[] = [
+export const courses: ICourse[] = [
   {
-    name: "Pachet Start",
-    price: 3000, // RON
+    name: "Engleza",
+    price: 1800,
+    nrCursuri: 1,
+    nrLectii: 20,
+    maxCapacity: 15,
     features: [
-      "10 lecții interactive",
-      "Acces la materiale PDF și video",
-      "Teste practice săptămânale",
-      "Suport prin e-mail",
+      "1 lecție = 1 oră de studiu",
+      "Teste intermediare",
+      "Accent pe conversație și vocabular",
     ],
   },
   {
-    // The highlighted tier with 20 lectures @ 500 RON
-    name: "Pachet Plus",
-    price: 5000, // RON
+    name: "Istoria națională",
+    price: 1800,
+    nrCursuri: 1,
+    nrLectii: 20,
+    maxCapacity: 15,
     features: [
-      "20 lecții interactive (live sau înregistrate)",
-      "Acces la fișe de lucru avansate și simulări de examen",
-      "Rapoarte de progres personalizate",
-      "Asistență prioritară prin e-mail și chat",
+      "1 lecție = 1 oră de studiu",
+      "Focalizare pe evenimentele-cheie ale istoriei naționale",
+      "Exerciții și dezbateri tematice",
     ],
   },
   {
-    name: "Pachet Premium",
-    price: 7000, // RON
+    name: "Limba şi Literatura Română",
+    price: 1800,
+    nrCursuri: 1,
+    nrLectii: 25,
+    maxCapacity: 15,
     features: [
-      "30 lecții interactive + sesiuni Q&A individuale",
-      "Toate materialele și testele practice disponibile non-stop",
-      "Mentorat 1-la-1 cu profesori specializați",
-      "Suport dedicat prin e-mail, chat și telefon",
-      "Revizuiri și recomandări personalizate suplimentare",
+      "1 lecție = 1 oră de studiu",
+      "Analize literare și eseuri",
+      "Focus pe gramatică și stil",
+    ],
+  },
+  {
+    name: "Geografie",
+    price: 1800,
+    nrCursuri: 1,
+    nrLectii: 26,
+    maxCapacity: 15,
+    features: [
+      "1 lecție = 1 oră de studiu",
+      "Hărți și studii de caz",
+      "Aplicații practice despre regiuni",
+    ],
+  },
+  {
+    name: "Informatica - limbajul C++",
+    price: 2000,
+    nrCursuri: 1,
+    nrLectii: 20,
+    maxCapacity: 12,
+    features: [
+      "1 lecție = 1 oră de studiu",
+      "Exerciții de programare în C++",
+      "Proiecte practice la fiecare modul",
+    ],
+  },
+  {
+    name: "Biologia",
+    price: 1800,
+    nrCursuri: 1,
+    nrLectii: 23,
+    maxCapacity: 15,
+    features: [
+      "1 lecție = 1 oră de studiu",
+      "Exemple și experimente practice",
+      "Teste periodice și recapitulări",
+    ],
+  },
+  {
+    name: "Matematica",
+    price: 2000,
+    nrCursuri: 4,
+    nrLectii: 20,
+    maxCapacity: 12,
+    features: [
+      "1 lecție = 1 oră de studiu",
+      "4 sub-cursuri (profil real, etc.)",
+      "Probleme și exerciții practice",
+    ],
+  },
+  {
+    name: "AI - bazele Machine Learning în Python",
+    price: 4000,
+    nrCursuri: 1,
+    nrLectii: 25,
+    maxCapacity: 10,
+    features: [
+      "Fiecare lecție durează ~2 ore",
+      "Proiect de final pentru evaluare",
+      "Studii de caz Machine Learning",
+    ],
+  },
+  {
+    name: "Curs Cambridge",
+    price: 2000,
+    nrCursuri: 1,
+    nrLectii: 25,
+    maxCapacity: 12,
+    features: [
+      "1 lecție = 1 oră de studiu",
+      "Simulări examen Cambridge",
+      "Feedback individualizat",
     ],
   },
 ];
