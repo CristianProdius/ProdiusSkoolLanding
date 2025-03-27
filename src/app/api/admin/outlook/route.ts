@@ -6,12 +6,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
 
-  // If no code, redirect teacher to Microsoft login
   if (!code) {
     return redirectToMicrosoftAuth();
   }
 
-  // Otherwise handle callback
   return await handleCallback(request, code);
 }
 
@@ -68,11 +66,11 @@ async function handleCallback(request: NextRequest, code: string) {
   }
 
   const tokenData = await response.json();
-  // { access_token, refresh_token, expires_in, etc. }
+  // e.g. { access_token, refresh_token, expires_in, ... }
 
-  // Store tokens in DB with a fixed ID e.g. "teacher-outlook"
-  // If row doesn't exist, create; if it does, update. We'll use upsert:
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+
+  // Upsert with id = "teacher-outlook"
   await prisma.oAuthToken.upsert({
     where: { id: "teacher-outlook" },
     update: {
@@ -89,7 +87,7 @@ async function handleCallback(request: NextRequest, code: string) {
     },
   });
 
-  // Redirect teacher somewhere, e.g. to an admin dashboard
+  // redirect to /admin or wherever
   const successUrl = new URL("/admin?connected=1", request.url);
   return NextResponse.redirect(successUrl);
 }
