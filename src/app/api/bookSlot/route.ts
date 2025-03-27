@@ -8,16 +8,11 @@ import { BookingStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-/**
- * We'll remove nodemailer and do all emails via Graph /me/sendMail calls,
- * reusing the teacher-outlook tokens.
- */
-
-// Maximum group size fallback. We'll still read from subject for capacity, or use fallback if needed.
+// Fallback capacity if subject doesn’t specify one
 const DEFAULT_MAX_CAPACITY = 3;
 
 /**
- * A "FullBooking" includes teacher, subject, student data
+ * A "FullBooking" includes teacher, subject, and student data.
  */
 export type FullBooking = Booking & {
   teacher: {
@@ -28,7 +23,7 @@ export type FullBooking = Booking & {
   subject: {
     id: number;
     name: string;
-    maxCapacity?: number; // if you store capacity here
+    maxCapacity?: number;
   };
   student: {
     name: string;
@@ -38,7 +33,7 @@ export type FullBooking = Booking & {
 };
 
 /**
- * OutlookAttendee is used for the event's attendees array
+ * Represents an Outlook event attendee.
  */
 interface OutlookAttendee {
   emailAddress: {
@@ -47,20 +42,26 @@ interface OutlookAttendee {
   type?: string;
 }
 
+/**
+ * Interface for sending mail via Microsoft Graph.
+ */
+interface GraphMailPayload {
+  subject: string;
+  body: {
+    contentType: "Text" | "HTML";
+    content: string;
+  };
+  toRecipients: {
+    emailAddress: { address: string };
+  }[];
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const {
-      subjectId,
-      teacherId,
-      date, // e.g. "2025-04-01"
-      timeslot, // e.g. "18:00 - 19:00"
-      name,
-      email,
-      phone,
-    } = body;
+    const { subjectId, teacherId, date, timeslot, name, email, phone } = body;
 
-    // 1) Validate
+    // 1) Validate required fields
     if (!subjectId || !teacherId || !date || !timeslot || !name || !email) {
       return NextResponse.json(
         {
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2) Load subject to get maxCapacity if you store it in subject
+    // 2) Load subject to get maxCapacity
     const subject = await prisma.subject.findUnique({
       where: { id: Number(subjectId) },
     });
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 4) If teacher is full, attempt to find alternative
+    // 4) If teacher is full, attempt to find an alternative teacher
     if (currentCount >= maxCapacity) {
       const altTeacherId = await findAlternativeTeacher(
         Number(subjectId),
@@ -107,7 +108,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Book with the alternative teacher
       const booking = await prisma.booking.create({
         data: {
           subject: { connect: { id: Number(subjectId) } },
@@ -125,10 +125,7 @@ export async function POST(req: NextRequest) {
         include: { teacher: true, subject: true, student: true },
       });
 
-      // Upsert event + send PENDING emails
       await upsertCalendarEventAndSendEmails(booking, true);
-
-      // Then check if group is full
       await checkAndConfirmGroup(altTeacherId, date, timeslot);
 
       return NextResponse.json(
@@ -146,19 +143,13 @@ export async function POST(req: NextRequest) {
         timeslot,
         status: BookingStatus.PENDING,
         student: {
-          connectOrCreate: {
-            where: { email },
-            create: { name, email, phone },
-          },
+          connectOrCreate: { where: { email }, create: { name, email, phone } },
         },
       },
       include: { teacher: true, subject: true, student: true },
     });
 
-    // Upsert event + send PENDING emails
     await upsertCalendarEventAndSendEmails(booking, false);
-
-    // 6) Check if group is now full
     await checkAndConfirmGroup(Number(teacherId), date, timeslot);
 
     return NextResponse.json({ success: true }, { status: 200 });
@@ -172,23 +163,21 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * findAlternativeTeacher: tries to find another teacher for the same subject/time who isn't full
+ * findAlternativeTeacher:
+ * Tries to find another teacher for the given subject/date/timeslot who isn't full.
  */
 async function findAlternativeTeacher(
   subjectId: number,
   date: string,
   timeslot: string
 ) {
-  // Load subject so we can see maxCapacity
   const subject = await prisma.subject.findUnique({ where: { id: subjectId } });
   if (!subject) return null;
   const maxCapacity = subject.maxCapacity ?? DEFAULT_MAX_CAPACITY;
 
-  // get teachers for that subject
   const teachers = await prisma.teacher.findMany({ where: { subjectId } });
-
   for (const t of teachers) {
-    const c = await prisma.booking.count({
+    const count = await prisma.booking.count({
       where: {
         teacherId: t.id,
         date: new Date(date),
@@ -196,44 +185,40 @@ async function findAlternativeTeacher(
         status: { not: BookingStatus.CANCELED },
       },
     });
-    if (c < maxCapacity) {
-      return t.id; // first teacher with free capacity
-    }
+    if (count < maxCapacity) return t.id;
   }
   return null;
 }
 
 /**
- *  upsertCalendarEventAndSendEmails:
- *  - refreshes teacher tokens if needed
- *  - upserts an Outlook event
- *  - sends teacher+student "PENDING" emails via Graph
+ * upsertCalendarEventAndSendEmails:
+ * - Refreshes teacher tokens if needed.
+ * - Creates or updates the Outlook calendar event.
+ * - Sends teacher and student "PENDING" emails via Graph API.
  */
 async function upsertCalendarEventAndSendEmails(
   booking: FullBooking,
   switched: boolean
 ) {
-  // 1) Build start & end Date
+  // 1) Build start and end Date from booking.timeslot
   const [startH, startM] = booking.timeslot.split("-")[0].trim().split(":");
   const [endH, endM] = booking.timeslot.split("-")[1].trim().split(":");
   const startDate = new Date(booking.date);
   startDate.setHours(+startH, +startM, 0, 0);
-
   const endDate = new Date(booking.date);
   endDate.setHours(+endH, +endM, 0, 0);
 
-  // 2) Refresh teacher-outlook token if needed
+  // 2) Refresh and load teacher token
   const tokenRow = await refreshOutlookTokenIfNeeded();
   if (!tokenRow) {
     console.warn(
-      "No teacher-outlook tokens. Skipping Outlook event creation + emails."
+      "No teacher-outlook tokens. Skipping event creation and email sending."
     );
-    // fallback => just skip the event creation
     return;
   }
   const accessToken = tokenRow.accessToken;
 
-  // 3) Check if there's an existing CalendarEvent row
+  // 3) Look for an existing event in DB
   const existingEvent = await prisma.calendarEvent.findUnique({
     where: {
       unique_event_per_slot: {
@@ -247,7 +232,7 @@ async function upsertCalendarEventAndSendEmails(
   let outlookEventId: string | null = null;
 
   if (!existingEvent) {
-    // CREATE new event
+    // CREATE new event in Outlook
     const createRes = await fetch(
       "https://graph.microsoft.com/v1.0/me/events",
       {
@@ -291,38 +276,40 @@ async function upsertCalendarEventAndSendEmails(
     } else {
       const eventJson = await createRes.json();
       outlookEventId = eventJson.id;
-      // store in DB
       await prisma.calendarEvent.create({
         data: {
           teacherId: booking.teacher.id,
           date: booking.date,
           timeslot: booking.timeslot,
           outlookEventId,
-          googleEventId: "", // if your schema still has it
+          googleEventId: "",
         },
       });
     }
   } else {
-    // Update existing event (add new attendee if not present)
+    // UPDATE existing event by adding the new attendee if missing
     outlookEventId = existingEvent.outlookEventId;
     if (outlookEventId) {
-      const getEvent = await fetch(
+      const getRes = await fetch(
         `https://graph.microsoft.com/v1.0/me/events/${outlookEventId}`,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
       );
-      if (getEvent.ok) {
-        const eventData = await getEvent.json();
-        const currentAttendees = eventData.attendees || [];
-        const newAttendee = {
+      if (getRes.ok) {
+        const eventData = await getRes.json();
+        // Cast attendees to OutlookAttendee[] for type safety
+        const currentAttendees =
+          (eventData.attendees as OutlookAttendee[]) || [];
+        const newAttendee: OutlookAttendee = {
           emailAddress: { address: booking.student.email },
           type: "required",
         };
-        const alreadyAttending = currentAttendees.some(
-          (a: any) => a.emailAddress.address === booking.student.email
-        );
-        if (!alreadyAttending) {
+        if (
+          !currentAttendees.some(
+            (a) => a.emailAddress.address === booking.student.email
+          )
+        ) {
           currentAttendees.push(newAttendee);
 
           const patchRes = await fetch(
@@ -347,13 +334,12 @@ async function upsertCalendarEventAndSendEmails(
     }
   }
 
-  // 4) Now send teacher+student "PENDING" emails via Graph
+  // 4) Send "PENDING" emails via Graph API
   await sendRegistrationEmailsViaGraph(booking, switched, accessToken);
 }
 
 /**
- * This sends teacher+student "PENDING" emails with Microsoft Graph /me/sendMail
- * No nodemailer needed.
+ * Sends teacher and student "PENDING" emails using Microsoft Graph.
  */
 async function sendRegistrationEmailsViaGraph(
   booking: FullBooking,
@@ -362,14 +348,12 @@ async function sendRegistrationEmailsViaGraph(
 ) {
   const teacherName = booking.teacher.name;
   const teacherEmail = booking.teacher.email || "teacher@mydomain.com";
-
   const { name, email, phone } = booking.student;
   const subjectName = booking.subject.name;
   const dateStr = new Date(booking.date).toISOString().split("T")[0];
   const { timeslot } = booking;
 
-  // teacher email
-  const teacherMsg = {
+  const teacherMsg: GraphMailPayload = {
     subject: `Nouă lecție (PENDING): ${subjectName}`,
     body: {
       contentType: "Text",
@@ -378,7 +362,7 @@ async function sendRegistrationEmailsViaGraph(
       }) s-a înscris pentru lecția demo:\n
 - Materie: ${subjectName}
 - Data: ${dateStr}
-- Interval orar: ${timeslot}
+- Interval: ${timeslot}
 ${
   switched
     ? "\nA fost redirecționat la dvs. deoarece alt profesor era ocupat.\n"
@@ -389,8 +373,7 @@ Lecția este PENDING. Vom confirma când se atinge numărul complet de elevi.`,
     toRecipients: [{ emailAddress: { address: teacherEmail } }],
   };
 
-  // student email
-  const studentMsg = {
+  const studentMsg: GraphMailPayload = {
     subject: `Confirmare înscriere lecție demo (PENDING) - ${subjectName}`,
     body: {
       contentType: "Text",
@@ -407,134 +390,17 @@ Mulțumim!`,
     toRecipients: [{ emailAddress: { address: email } }],
   };
 
-  // send both
   await sendMailViaGraph(accessToken, teacherMsg);
   await sendMailViaGraph(accessToken, studentMsg);
 }
 
 /**
- * If we have 'maxCapacity' PENDING => mark them CONFIRMED & send “group formed” email
+ * sendMailViaGraph calls Microsoft Graph's /me/sendMail endpoint.
  */
-async function checkAndConfirmGroup(
-  teacherId: number,
-  date: string,
-  timeslot: string
+async function sendMailViaGraph(
+  accessToken: string,
+  emailPayload: GraphMailPayload
 ) {
-  // 1) load teacher & subject => find maxCapacity
-  const teacher = await prisma.teacher.findUnique({
-    where: { id: teacherId },
-    include: { subject: true },
-  });
-  if (!teacher || !teacher.subject) return;
-  const maxCapacity = teacher.subject.maxCapacity ?? DEFAULT_MAX_CAPACITY;
-
-  // 2) count how many are PENDING
-  const pendingCount = await prisma.booking.count({
-    where: {
-      teacherId,
-      date: new Date(date),
-      timeslot,
-      status: BookingStatus.PENDING,
-    },
-  });
-  if (pendingCount < maxCapacity) return; // not full
-
-  // 3) load them
-  const fullBookings = await prisma.booking.findMany({
-    where: {
-      teacherId,
-      date: new Date(date),
-      timeslot,
-      status: BookingStatus.PENDING,
-    },
-    include: {
-      student: true,
-      teacher: true,
-      subject: true,
-    },
-  });
-
-  if (fullBookings.length >= maxCapacity) {
-    // confirm them
-    const bookingIds = fullBookings.map((b) => b.id);
-    await prisma.booking.updateMany({
-      where: { id: { in: bookingIds } },
-      data: { status: BookingStatus.CONFIRMED },
-    });
-
-    // send group-formed emails
-    await sendGroupFormedEmailViaGraph(fullBookings);
-  }
-}
-
-/**
- * Notify teacher + group that they're now CONFIRMED
- */
-async function sendGroupFormedEmailViaGraph(bookings: FullBooking[]) {
-  if (!bookings.length) return;
-
-  // refresh tokens if needed
-  const tokenRow = await refreshOutlookTokenIfNeeded();
-  if (!tokenRow) {
-    console.warn("No teacher-outlook tokens for group-formed email. Skipping.");
-    return;
-  }
-  const accessToken = tokenRow.accessToken;
-
-  const teacher = bookings[0].teacher;
-  const teacherEmail = teacher.email || "teacher@mydomain.com";
-  const subjectName = bookings[0].subject.name;
-  const dateStr = new Date(bookings[0].date).toISOString().split("T")[0];
-  const timeslot = bookings[0].timeslot;
-  const teacherName = teacher.name;
-
-  const students = bookings.map((b) => b.student);
-
-  // 1) teacher email
-  const teacherMsg = {
-    subject: `Grup complet CONFIRMAT pentru ${subjectName}`,
-    body: {
-      contentType: "Text",
-      content: `Salut, ${teacherName}!\n\nS-au strâns destui elevi pentru lecția demo:\n
-- Materie: ${subjectName}
-- Data: ${dateStr}
-- Interval: ${timeslot}
-
-Elevi:
-${students
-  .map((s) => `• ${s.name} (${s.email}, tel: ${s.phone || "N/A"})`)
-  .join("\n")}
-Lecția este CONFIRMED. Succes!`,
-    },
-    toRecipients: [{ emailAddress: { address: teacherEmail } }],
-  };
-  // send to teacher
-  await sendMailViaGraph(accessToken, teacherMsg);
-
-  // 2) each student
-  for (const s of students) {
-    const studentMsg = {
-      subject: `Lecția demo CONFIRMATĂ: ${subjectName}`,
-      body: {
-        contentType: "Text",
-        content: `Bună, ${s.name}!\n\nFelicitări, s-a format grupul complet pentru:
-- Materie: ${subjectName}
-- Data: ${dateStr}
-- Interval: ${timeslot}
-- Profesor: ${teacherName}
-
-Ne vedem la lecție! Mult succes!`,
-      },
-      toRecipients: [{ emailAddress: { address: s.email } }],
-    };
-    await sendMailViaGraph(accessToken, studentMsg);
-  }
-}
-
-/**
- * sendMailViaGraph: calls POST /me/sendMail with the teacher-outlook token
- */
-async function sendMailViaGraph(accessToken: string, emailPayload: any) {
   const resp = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
     method: "POST",
     headers: {
@@ -554,7 +420,118 @@ async function sendMailViaGraph(accessToken: string, emailPayload: any) {
 }
 
 /**
- * refreshOutlookTokenIfNeeded: if teacher-outlook token is near expiry, refresh it
+ * checkAndConfirmGroup:
+ * If pending bookings reach maxCapacity, confirm them and notify via Graph.
+ */
+async function checkAndConfirmGroup(
+  teacherId: number,
+  date: string,
+  timeslot: string
+) {
+  const teacher = await prisma.teacher.findUnique({
+    where: { id: teacherId },
+    include: { subject: true },
+  });
+  if (!teacher || !teacher.subject) return;
+  const maxCapacity = teacher.subject.maxCapacity ?? DEFAULT_MAX_CAPACITY;
+
+  const pendingCount = await prisma.booking.count({
+    where: {
+      teacherId,
+      date: new Date(date),
+      timeslot,
+      status: BookingStatus.PENDING,
+    },
+  });
+  if (pendingCount < maxCapacity) return;
+
+  const fullBookings = await prisma.booking.findMany({
+    where: {
+      teacherId,
+      date: new Date(date),
+      timeslot,
+      status: BookingStatus.PENDING,
+    },
+    include: {
+      student: true,
+      teacher: true,
+      subject: true,
+    },
+  });
+
+  if (fullBookings.length >= maxCapacity) {
+    const bookingIds = fullBookings.map((b) => b.id);
+    await prisma.booking.updateMany({
+      where: { id: { in: bookingIds } },
+      data: { status: BookingStatus.CONFIRMED },
+    });
+
+    await sendGroupFormedEmailViaGraph(fullBookings);
+  }
+}
+
+/**
+ * sendGroupFormedEmailViaGraph: Notifies teacher and each student when the group is confirmed.
+ */
+async function sendGroupFormedEmailViaGraph(bookings: FullBooking[]) {
+  if (bookings.length === 0) return;
+
+  const tokenRow = await refreshOutlookTokenIfNeeded();
+  if (!tokenRow) {
+    console.warn("No teacher-outlook tokens for group-formed email. Skipping.");
+    return;
+  }
+  const accessToken = tokenRow.accessToken;
+
+  const teacher = bookings[0].teacher;
+  const teacherEmail = teacher.email || "teacher@mydomain.com";
+  const subjectName = bookings[0].subject.name;
+  const dateStr = new Date(bookings[0].date).toISOString().split("T")[0];
+  const timeslot = bookings[0].timeslot;
+  const teacherName = teacher.name;
+  const students = bookings.map((b) => b.student);
+
+  const teacherMsg: GraphMailPayload = {
+    subject: `Grup complet CONFIRMAT pentru ${subjectName}`,
+    body: {
+      contentType: "Text",
+      content: `Salut, ${teacherName}!\n\nS-au strâns destui elevi pentru lecția demo:\n
+- Materie: ${subjectName}
+- Data: ${dateStr}
+- Interval: ${timeslot}
+
+Elevi:
+${students
+  .map((s) => `• ${s.name} (${s.email}, tel: ${s.phone || "N/A"})`)
+  .join("\n")}
+Lecția este CONFIRMED. Succes!`,
+    },
+    toRecipients: [{ emailAddress: { address: teacherEmail } }],
+  };
+
+  await sendMailViaGraph(accessToken, teacherMsg);
+
+  for (const s of students) {
+    const studentMsg: GraphMailPayload = {
+      subject: `Lecția demo CONFIRMATĂ: ${subjectName}`,
+      body: {
+        contentType: "Text",
+        content: `Bună, ${s.name}!\n\nFelicitări, s-a format grupul complet pentru:
+- Materie: ${subjectName}
+- Data: ${dateStr}
+- Interval: ${timeslot}
+- Profesor: ${teacherName}
+
+Ne vedem la lecție! Mult succes!`,
+      },
+      toRecipients: [{ emailAddress: { address: s.email } }],
+    };
+    await sendMailViaGraph(accessToken, studentMsg);
+  }
+}
+
+/**
+ * refreshOutlookTokenIfNeeded: Refresh the teacher-outlook token if it’s near expiry.
  */
 async function refreshOutlookTokenIfNeeded() {
   const tokenRow = await prisma.oAuthToken.findUnique({
@@ -564,15 +541,12 @@ async function refreshOutlookTokenIfNeeded() {
     console.warn("No teacher-outlook tokens in DB.");
     return null;
   }
-
-  // If we have more than 60 seconds left, skip refresh
   const now = Date.now();
   if (tokenRow.expiresAt.getTime() > now + 60_000) {
-    return tokenRow; // still valid
+    return tokenRow;
   }
 
-  console.log("Outlook token expired or about to expire. Refreshing...");
-
+  console.log("Outlook token expired or near expiry. Refreshing...");
   const tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
   const bodyParams = new URLSearchParams({
     client_id: process.env.OUTLOOK_CLIENT_ID || "",
@@ -612,6 +586,6 @@ async function refreshOutlookTokenIfNeeded() {
     },
   });
 
-  console.log("Refreshed Outlook token. Expires at:", updated.expiresAt);
+  console.log("Refreshed Outlook token. New expiry:", updated.expiresAt);
   return updated;
 }
