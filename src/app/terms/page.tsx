@@ -70,10 +70,10 @@ export default function TermsOfServicePage() {
         Dacă aveți întrebări sau nelămuriri cu privire la acești Termeni, vă
         rugăm să ne contactați la{" "}
         <a
-          href="mailto:cristian@prodiusskool.com"
+          href="mailto:contact@prodiusskool.com"
           className="text-blue-600 hover:underline"
         >
-          cristian@prodiusskool.com
+          contact@prodiusskool.com
         </a>
         .
       </p>

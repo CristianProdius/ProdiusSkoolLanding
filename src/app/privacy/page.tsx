@@ -79,10 +79,10 @@ export default function PrivacyPolicyPage() {
         Dacă aveți întrebări despre Politica noastră de Confidențialitate, vă
         rugăm să ne contactați la{" "}
         <a
-          href="mailto:cristian@prodiusskool.com"
+          href="mailto:contact@prodiusskool.com"
           className="text-blue-600 hover:underline"
         >
-          cristian@prodiusskool.com
+          contact@prodiusskool.com
         </a>
         .
       </p>

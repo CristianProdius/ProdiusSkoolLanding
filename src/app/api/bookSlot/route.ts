@@ -182,7 +182,7 @@ async function findAlternativeTeacher(
 }
 
 /**
- *  upsertCalendarEventAndSendEmails:
+ * upsertCalendarEventAndSendEmails:
  *  - upsert an Outlook calendar event (if teacher tokens found in DB)
  *  - sends "PENDING" email notifications
  */
@@ -199,14 +199,12 @@ async function upsertCalendarEventAndSendEmails(
   const endDate = new Date(booking.date);
   endDate.setHours(+endH, +endM, 0, 0);
 
-  // 2) Load the teacher's Outlook tokens from DB (id = "teacher-outlook")
-  const tokenRow = await prisma.oAuthToken.findUnique({
-    where: { id: "teacher-outlook" },
-  });
+  // 2) Refresh tokens if needed, and load the teacher-outlook token row
+  const tokenRow = await refreshOutlookTokenIfNeeded();
   if (!tokenRow) {
-    // fallback: just send emails or do nothing
+    // fallback: just send emails
     console.warn(
-      "No Outlook tokens found for teacher-outlook. Skipping event creation."
+      "No Outlook tokens found or refresh failed. Skipping event creation."
     );
     await sendRegistrationEmail(booking, switched);
     return;
@@ -281,7 +279,7 @@ async function upsertCalendarEventAndSendEmails(
           date: booking.date,
           timeslot: booking.timeslot,
           outlookEventId,
-          googleEventId: "", // Provide a default or actual value for googleEventId
+          googleEventId: "", // Provide a default or actual value if your schema demands
         },
       });
     }
@@ -515,4 +513,84 @@ async function sendGroupFormedEmail(bookings: FullBooking[]) {
       console.error("Error sending group-formed mail to student:", err);
     }
   }
+}
+
+/**
+ * =============================
+ *     REFRESH LOGIC BELOW
+ * =============================
+ */
+
+/**
+ * Attempt to refresh the teacher-outlook token if it's expired or near expiry.
+ * Returns the updated OAuthToken row, or null if not found / refresh failed.
+ */
+async function refreshOutlookTokenIfNeeded() {
+  // 1) Load the teacher-outlook row
+  const tokenRow = await prisma.oAuthToken.findUnique({
+    where: { id: "teacher-outlook" },
+  });
+  if (!tokenRow) {
+    console.warn("No teacher-outlook tokens exist in DB.");
+    return null;
+  }
+
+  // 2) Check if expiresAt is more than 1 minute away; if so, no refresh needed
+  const now = new Date();
+  // Refresh if we're within 1 minute of expiry
+  if (tokenRow.expiresAt.getTime() > now.getTime() + 60_000) {
+    // Access token is still valid
+    return tokenRow;
+  }
+
+  console.log("Access token expired or about to expire. Attempting refresh...");
+
+  // 3) Refresh with Microsoft
+  const tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+
+  const bodyParams = new URLSearchParams({
+    client_id: process.env.OUTLOOK_CLIENT_ID || "",
+    client_secret: process.env.OUTLOOK_CLIENT_SECRET || "",
+    grant_type: "refresh_token",
+    refresh_token: tokenRow.refreshToken,
+    scope: [
+      "openid",
+      "profile",
+      "offline_access",
+      "https://graph.microsoft.com/Calendars.ReadWrite",
+    ].join(" "),
+  });
+
+  const resp = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: bodyParams,
+  });
+
+  if (!resp.ok) {
+    console.error("Failed to refresh Outlook token:", await resp.text());
+    return null;
+  }
+
+  const newData = await resp.json(); // { access_token, refresh_token, expires_in, ...}
+  const newExpiresAt = new Date(
+    Date.now() + (newData.expires_in || 3600) * 1000
+  );
+
+  // 4) Update DB row
+  const updated = await prisma.oAuthToken.update({
+    where: { id: "teacher-outlook" },
+    data: {
+      accessToken: newData.access_token,
+      // If newData.refresh_token is missing for some reason, keep old one
+      refreshToken: newData.refresh_token || tokenRow.refreshToken,
+      expiresAt: newExpiresAt,
+    },
+  });
+
+  console.log(
+    "Successfully refreshed Outlook token. Expires at:",
+    updated.expiresAt
+  );
+  return updated;
 }
